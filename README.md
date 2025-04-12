@@ -1,6 +1,6 @@
 # Crop-Weed Detection System
 
-![Project Preview]([https://via.placeholder.com/800x400.png?text=Project+Demo](https://github.com/UmeshSamartapu/Agriculture_Crop_and_Weed_Detection_upskillcampus_Edunet_DSML_Internship/blob/main/templates/Crop%20%26%20Weed%20Detection%20System%20pic.png)) 
+![Project Preview]([templates/Crop & Weed Detection System pic.png)) 
 
 A deep learning-based web application for detecting crops and weeds in agricultural images using YOLOv5 and FastAPI.
 
@@ -90,7 +90,7 @@ crop-weed-detection/
 ## Demo 
 ### You can watch the ([youtube video](    )) for demo
 <p align="center">
-  <img src=" https://github.com/UmeshSamartapu/Agriculture_Crop_and_Weed_Detection_upskillcampus_Edunet_DSML_Internship/blob/main/templates/Crop%20%26%20Weed%20Detection%20System%20gif.gif " />
+  <img src=" templates/Crop & Weed Detection System gif.gif " />
 </p>  
 
 
