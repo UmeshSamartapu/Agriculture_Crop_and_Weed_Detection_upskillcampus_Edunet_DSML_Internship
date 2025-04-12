@@ -1,7 +1,6 @@
 # Crop-Weed Detection System
 
 ![Project Preview](https://via.placeholder.com/800x400.png?text=Project+Demo) 
-*Add actual screenshots of your interface here*
 
 A deep learning-based web application for detecting crops and weeds in agricultural images using YOLOv5 and FastAPI.
 
