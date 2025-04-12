@@ -2,32 +2,105 @@
 <html>
 <head>
     <title>Crop-Weed Detection</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         :root {
-            --primary-color: #4CAF50;
-            --secondary-color: #45a049;
-            --background: #f5f5f5;
+            --primary-color: #2E7D32;
+            --secondary-color: #81C784;
+            --background: #f8f9fa;
+            --text-dark: #2c3e50;
+            --success: #388E3C;
+            --error: #d32f2f;
         }
 
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
             background-color: var(--background);
             margin: 0;
             padding: 20px;
+            color: var(--text-dark);
         }
 
         .container {
             max-width: 1400px;
             margin: 0 auto;
             background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            color: var(--primary-color);
+            margin: 0;
+            font-size: 2.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
         }
 
         .upload-section {
             text-align: center;
             margin-bottom: 40px;
+        }
+
+        .upload-card {
+            background: #F5FBF5;
+            border-radius: 12px;
+            padding: 40px 20px;
+            border: 2px dashed var(--secondary-color);
+            margin: 20px auto;
+            max-width: 600px;
+            transition: all 0.3s ease;
+        }
+
+        .upload-card:hover {
+            background: #EDF7ED;
+            transform: translateY(-2px);
+        }
+
+        .custom-upload {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+        }
+
+        .custom-upload input {
+            opacity: 0;
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .upload-btn {
+            background: var(--primary-color);
+            color: white;
+            padding: 14px 32px;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1.1rem;
+            transition: transform 0.2s ease;
+        }
+
+        .upload-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .file-name {
+            margin-top: 12px;
+            color: #666;
+            font-size: 0.9rem;
         }
 
         .comparison-row {
@@ -39,50 +112,51 @@
 
         .image-card {
             background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            padding: 20px;
+            transition: transform 0.3s ease;
+        }
+
+        .image-card:hover {
+            transform: translateY(-4px);
         }
 
         .image-card h3 {
-            margin: 0 0 15px 0;
-            color: #333;
-            font-size: 1.2em;
-            padding-bottom: 10px;
-            border-bottom: 2px solid var(--primary-color);
+            margin: 0 0 20px 0;
+            color: var(--text-dark);
+            font-size: 1.3rem;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--secondary-color);
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .preview-image {
             width: 100%;
             height: 400px;
             object-fit: contain;
-            border-radius: 4px;
+            border-radius: 8px;
+            background: linear-gradient(45deg, #f8f8f8, #f0f0f0);
+            padding: 10px;
+        }
+
+        .placeholder {
+            height: 400px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #999;
             background: #f8f8f8;
-            padding: 10px;
+            border-radius: 8px;
         }
 
-        input[type="file"] {
-            margin: 20px 0;
-            padding: 10px;
-            border: 2px dashed #ddd;
-            border-radius: 5px;
-            width: 80%;
-            max-width: 400px;
-        }
-
-        button {
-            background: var(--primary-color);
-            color: white;
-            padding: 12px 30px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 1em;
-            transition: background 0.3s ease;
-        }
-
-        button:hover {
-            background: var(--secondary-color);
+        .placeholder i {
+            font-size: 3rem;
+            margin-bottom: 16px;
+            color: var(--secondary-color);
         }
 
         .results-table {
@@ -94,94 +168,163 @@
             width: 100%;
             border-collapse: collapse;
             background: white;
-            border-radius: 8px;
+            border-radius: 12px;
             overflow: hidden;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
         }
 
         th, td {
-            padding: 12px 15px;
+            padding: 14px 20px;
             text-align: left;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid #f0f0f0;
         }
 
         th {
             background: var(--primary-color);
             color: white;
-            position: sticky;
-            top: 0;
+            font-weight: 600;
+        }
+
+        tr:nth-child(even) {
+            background-color: #F8FAF8;
         }
 
         tr:hover {
-            background-color: #f9f9f9;
+            background-color: #f0faf0;
+        }
+
+        .confidence-bar {
+            width: 80px;
+            height: 6px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: var(--success);
+            width: attr(data-confidence);
         }
 
         .error {
-            color: #dc3545;
-            padding: 15px;
-            margin: 20px 0;
-            background: #ffe6e6;
-            border-radius: 5px;
-            border: 1px solid #ffcccc;
+            color: var(--error);
+            padding: 16px;
+            margin: 20px auto;
+            background: #FFEBEE;
+            border-radius: 8px;
+            border: 1px solid #FFCDD2;
+            max-width: 600px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--secondary-color);
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
 
         @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+
             .comparison-row {
                 grid-template-columns: 1fr;
                 gap: 20px;
             }
-            
-            .preview-image {
+
+            .preview-image, .placeholder {
                 height: 300px;
             }
-            
-            .container {
-                padding: 20px;
+
+            .header h1 {
+                font-size: 2rem;
             }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1 style="text-align: center; margin-bottom: 30px; color: #333;">
-            Crop & Weed Detection System
-        </h1>
+        <div class="header">
+            <h1>
+                <i class="fas fa-seedling"></i>
+                Crop & Weed Detection System
+            </h1>
+        </div>
 
         <div class="upload-section">
-            <form method="post" enctype="multipart/form-data" action="/upload">
-                <input type="file" name="file" accept="image/*" required>
-                <br>
-                <button type="submit">Analyze Image</button>
+            <form method="post" enctype="multipart/form-data" action="/upload" onsubmit="showLoading()">
+                <div class="upload-card">
+                    <div class="custom-upload">
+                        <input type="file" name="file" accept="image/*" required id="fileInput" 
+                               onchange="document.getElementById('fileName').textContent = this.files[0].name">
+                        <label class="upload-btn" for="fileInput">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            Choose Image
+                        </label>
+                    </div>
+                    <div class="file-name" id="fileName"></div>
+                </div>
+                <button type="submit" class="upload-btn">
+                    <i class="fas fa-magic"></i>
+                    Analyze Image
+                </button>
             </form>
 
             {% if error %}
-                <p class="error">Error: {{ error }}</p>
+                <div class="error">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span>Error: {{ error }}</span>
+                </div>
             {% endif %}
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Analyzing Image...</p>
+            </div>
         </div>
 
         <div class="comparison-row">
             <div class="image-card">
-                <h3>Original Image</h3>
+                <h3><i class="fas fa-image"></i>Original Image</h3>
                 {% if uploaded_image %}
                     <img class="preview-image" 
                          src="/static/uploads/{{ uploaded_image }}" 
                          alt="Original Image">
                 {% else %}
-                    <div class="preview-placeholder">
-                        No image uploaded
+                    <div class="placeholder">
+                        <i class="fas fa-cloud-arrow-up"></i>
+                        Upload an image to begin
                     </div>
                 {% endif %}
             </div>
 
             <div class="image-card">
-                <h3>Analysis Result</h3>
+                <h3><i class="fas fa-chart-bar"></i>Analysis Result</h3>
                 {% if result_image %}
                     <img class="preview-image" 
                          src="/static/results/{{ result_image }}" 
                          alt="Analysis Result">
                 {% else %}
-                    <div class="preview-placeholder">
-                        Analysis results will appear here
+                    <div class="placeholder">
+                        <i class="fas fa-microscope"></i>
+                        Results will appear here
                     </div>
                 {% endif %}
             </div>
@@ -189,23 +332,28 @@
 
         {% if detections %}
         <div class="results-table">
-            <h3 style="margin-bottom: 15px;">Detection Details</h3>
+            <h3 style="margin-bottom: 20px;"><i class="fas fa-table"></i> Detection Details</h3>
             <table>
                 <thead>
                     <tr>
                         <th>Label</th>
                         <th>Confidence</th>
-                        <th>Bounding Box Coordinates</th>
+                        <th>Bounding Box</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for detection in detections %}
                     <tr>
                         <td>{{ detection.name }}</td>
-                        <td>{{ "%.2f"|format(detection.confidence) }}</td>
                         <td>
-                            X: {{ "%.0f"|format(detection.xmin) }} - {{ "%.0f"|format(detection.xmax) }},
-                            Y: {{ "%.0f"|format(detection.ymin) }} - {{ "%.0f"|format(detection.ymax) }}
+                            <div class="confidence-bar">
+                                <div class="confidence-fill" data-confidence="{{ detection.confidence * 100 }}%"></div>
+                            </div>
+                            {{ "%.2f"|format(detection.confidence) }}
+                        </td>
+                        <td>
+                            X: {{ "%.0f"|format(detection.xmin) }}-{{ "%.0f"|format(detection.xmax) }}<br>
+                            Y: {{ "%.0f"|format(detection.ymin) }}-{{ "%.0f"|format(detection.ymax) }}
                         </td>
                     </tr>
                     {% endfor %}
@@ -214,5 +362,11 @@
         </div>
         {% endif %}
     </div>
+
+    <script>
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+        }
+    </script>
 </body>
 </html>
