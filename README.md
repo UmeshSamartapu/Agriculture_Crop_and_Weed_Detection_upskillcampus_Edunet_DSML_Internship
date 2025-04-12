@@ -84,8 +84,8 @@ crop-weed-detection/
 
 - FastAPI documentation and community
 
-- **Contributors:** [umeshsamartapu]()
-- **Maintainer:** [umeshsamartapu]() [MeruguBharath]()
+- **Contributors:** [umeshsamartapu](https://github.com/UmeshSamartapu)
+- **Maintainer:** [umeshsamartapu](https://www.linkedin.com/in/umeshsamartapu/) [MeruguBharath](https://www.linkedin.com/in/merugu-bharath1001/)
 - **Status:** Active development
 
 ## Demo 
