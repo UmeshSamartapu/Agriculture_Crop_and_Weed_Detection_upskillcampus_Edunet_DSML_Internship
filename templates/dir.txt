@@ -1,0 +1,11 @@
+crop-weed-detection/
+├── templates/
+│   └── index.html
+├── static/
+│   ├── uploads/
+│   └── results/
+├── main.py
+├── requirements.txt
+├── render.yaml
+├── crop_weed_detection_model.pt
+└── .gitignore

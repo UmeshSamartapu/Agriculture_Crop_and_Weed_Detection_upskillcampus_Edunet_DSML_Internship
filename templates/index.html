@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Crop-Weed Detection</title>
+    <style>
+        :root {
+            --primary-color: #4CAF50;
+            --secondary-color: #45a049;
+            --background: #f5f5f5;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: var(--background);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .upload-section {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .comparison-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .image-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            padding: 15px;
+        }
+
+        .image-card h3 {
+            margin: 0 0 15px 0;
+            color: #333;
+            font-size: 1.2em;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--primary-color);
+        }
+
+        .preview-image {
+            width: 100%;
+            height: 400px;
+            object-fit: contain;
+            border-radius: 4px;
+            background: #f8f8f8;
+            padding: 10px;
+        }
+
+        input[type="file"] {
+            margin: 20px 0;
+            padding: 10px;
+            border: 2px dashed #ddd;
+            border-radius: 5px;
+            width: 80%;
+            max-width: 400px;
+        }
+
+        button {
+            background: var(--primary-color);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background 0.3s ease;
+        }
+
+        button:hover {
+            background: var(--secondary-color);
+        }
+
+        .results-table {
+            margin-top: 30px;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            background: var(--primary-color);
+            color: white;
+            position: sticky;
+            top: 0;
+        }
+
+        tr:hover {
+            background-color: #f9f9f9;
+        }
+
+        .error {
+            color: #dc3545;
+            padding: 15px;
+            margin: 20px 0;
+            background: #ffe6e6;
+            border-radius: 5px;
+            border: 1px solid #ffcccc;
+        }
+
+        @media (max-width: 768px) {
+            .comparison-row {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .preview-image {
+                height: 300px;
+            }
+            
+            .container {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 style="text-align: center; margin-bottom: 30px; color: #333;">
+            Crop & Weed Detection System
+        </h1>
+
+        <div class="upload-section">
+            <form method="post" enctype="multipart/form-data" action="/upload">
+                <input type="file" name="file" accept="image/*" required>
+                <br>
+                <button type="submit">Analyze Image</button>
+            </form>
+
+            {% if error %}
+                <p class="error">Error: {{ error }}</p>
+            {% endif %}
+        </div>
+
+        <div class="comparison-row">
+            <div class="image-card">
+                <h3>Original Image</h3>
+                {% if uploaded_image %}
+                    <img class="preview-image" 
+                         src="/static/uploads/{{ uploaded_image }}" 
+                         alt="Original Image">
+                {% else %}
+                    <div class="preview-placeholder">
+                        No image uploaded
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="image-card">
+                <h3>Analysis Result</h3>
+                {% if result_image %}
+                    <img class="preview-image" 
+                         src="/static/results/{{ result_image }}" 
+                         alt="Analysis Result">
+                {% else %}
+                    <div class="preview-placeholder">
+                        Analysis results will appear here
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if detections %}
+        <div class="results-table">
+            <h3 style="margin-bottom: 15px;">Detection Details</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Label</th>
+                        <th>Confidence</th>
+                        <th>Bounding Box Coordinates</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for detection in detections %}
+                    <tr>
+                        <td>{{ detection.name }}</td>
+                        <td>{{ "%.2f"|format(detection.confidence) }}</td>
+                        <td>
+                            X: {{ "%.0f"|format(detection.xmin) }} - {{ "%.0f"|format(detection.xmax) }},
+                            Y: {{ "%.0f"|format(detection.ymin) }} - {{ "%.0f"|format(detection.ymax) }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

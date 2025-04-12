@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+jinja2
+python-multipart
+torch
+Pillow
+requests
+werkzeug
+fastapi-cache
+numpy

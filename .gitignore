@@ -1,0 +1,9 @@
+__pycache__/
+static/uploads/*
+static/results/*
+*.pt
+env/
+.DS_Store
+crop_weed_detection_model.pt
+models/
+models/ultralytics_yolov5_master
