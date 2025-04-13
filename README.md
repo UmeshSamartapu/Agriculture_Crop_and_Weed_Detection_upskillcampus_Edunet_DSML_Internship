@@ -89,7 +89,7 @@ crop-weed-detection/
 - **Status:** Active development
 
 ## Demo 
-### You can watch the ([youtube video](    )) for demo
+### You can watch the ([youtube video](https://youtu.be/b8lpC0NsIWA)) for demo
 <p align="center">
   <img src="https://github.com/UmeshSamartapu/Agriculture_Crop_and_Weed_Detection_upskillcampus_Edunet_DSML_Internship/blob/main/templates/Crop%20%26%20Weed%20Detection%20System%20gif.gif?raw=true" alt="Crop & Weed Detection System GIF" />
 </p>
