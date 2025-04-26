@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Crop and Weed Detection System using YOLO-formatted Dataset
-Improved version with bug fixes and optimizations
+PyTorch version with .pt model saving
 """
 
 import os
@@ -11,24 +11,27 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.model_selection import train_test_split
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 from PIL import Image
 import glob
 import random
 import argparse
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import Dataset, DataLoader
+from torchvision import transforms
+from torchvision.models import resnet18
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 # Constants
 DEFAULT_IMAGE_SIZE = (512, 512)
-BATCH_SIZE = 16  # Reduced from 32 to help with memory usage
+BATCH_SIZE = 16
 EPOCHS = 25
 LEARNING_RATE = 0.0001
 VALIDATION_SPLIT = 0.2
 TEST_SPLIT = 0.15
 RANDOM_SEED = 42
+DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def setup_directories():
     """Create necessary directories for outputs"""
@@ -43,11 +46,9 @@ def load_data(data_dir):
     for ext in image_extensions:
         image_files.extend(glob.glob(os.path.join(data_dir, ext)))
     
-    # Verify we found images
     if not image_files:
         raise FileNotFoundError(f"No images found in {data_dir} with extensions {image_extensions}")
     
-    # Load corresponding label files
     label_files = []
     for img_path in image_files:
         base_name = os.path.splitext(os.path.basename(img_path))[0]
@@ -57,7 +58,6 @@ def load_data(data_dir):
             continue
         label_files.append(label_path)
     
-    # Verify we have matching labels
     if len(image_files) != len(label_files):
         print(f"Warning: Found {len(image_files)} images but {len(label_files)} label files")
     
@@ -84,7 +84,6 @@ def parse_yolo_label(label_path, img_width, img_height):
                     print(f"Warning: Couldn't convert values to float in {label_path}: {line}")
                     continue
                 
-                # Convert YOLO format to pixel coordinates
                 x_center = max(0, min(1, x_center)) * img_width
                 y_center = max(0, min(1, y_center)) * img_height
                 width = max(0, min(1, width)) * img_width
@@ -142,6 +141,31 @@ def visualize_sample(image_path, label_path, classes, save_path=None):
     except Exception as e:
         print(f"Error visualizing {image_path}: {str(e)}")
 
+class CropWeedDataset(Dataset):
+    """Custom PyTorch dataset for crop/weed classification"""
+    def __init__(self, dataframe, transform=None):
+        self.dataframe = dataframe
+        self.transform = transform or transforms.Compose([
+            transforms.ToPILImage(),
+            transforms.Resize(DEFAULT_IMAGE_SIZE),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        ])
+        
+    def __len__(self):
+        return len(self.dataframe)
+    
+    def __getitem__(self, idx):
+        row = self.dataframe.iloc[idx]
+        image = cv2.imread(row['image_path'])
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        label = 1 if row['has_weed'] == 'yes' else 0
+        
+        if self.transform:
+            image = self.transform(image)
+            
+        return image, torch.tensor(label, dtype=torch.float32)
+
 def create_dataframe(image_files, label_files, classes):
     """Create dataframe with image paths and labels"""
     data = []
@@ -161,7 +185,7 @@ def create_dataframe(image_files, label_files, classes):
             data.append({
                 'image_path': img_path,
                 'label_path': label_path,
-                'has_weed': 'yes' if has_weed else 'no',  # <<== change done here
+                'has_weed': 'yes' if has_weed else 'no',
                 'num_objects': len(objects),
                 'width': width,
                 'height': height
@@ -171,39 +195,131 @@ def create_dataframe(image_files, label_files, classes):
     
     return pd.DataFrame(data)
 
+class CropWeedModel(nn.Module):
+    """CNN model for crop/weed classification"""
+    def __init__(self):
+        super().__init__()
+        self.base_model = resnet18(pretrained=True)
+        num_features = self.base_model.fc.in_features
+        self.base_model.fc = nn.Sequential(
+            nn.Linear(num_features, 256),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            nn.Linear(256, 1),
+            nn.Sigmoid()
+        )
+        
+    def forward(self, x):
+        return self.base_model(x)
 
-def build_model(input_shape):
-    """Build CNN model with improved architecture"""
-    model = Sequential([
-        Conv2D(32, (3, 3), activation='relu', padding='same', input_shape=input_shape),
-        MaxPooling2D((2, 2)),
-        Dropout(0.2),
-        
-        Conv2D(64, (3, 3), activation='relu', padding='same'),
-        MaxPooling2D((2, 2)),
-        Dropout(0.2),
-        
-        Conv2D(128, (3, 3), activation='relu', padding='same'),
-        MaxPooling2D((2, 2)),
-        Dropout(0.2),
-        
-        Conv2D(256, (3, 3), activation='relu', padding='same'),
-        MaxPooling2D((2, 2)),
-        Dropout(0.3),
-        
-        Flatten(),
-        Dense(256, activation='relu'),
-        Dropout(0.5),
-        Dense(1, activation='sigmoid')
-    ])
+def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler, epochs):
+    """Training loop"""
+    best_val_loss = float('inf')
+    history = {'train_loss': [], 'val_loss': [], 'train_acc': [], 'val_acc': []}
     
-    model.compile(
-        optimizer=Adam(learning_rate=LEARNING_RATE),
-        loss='binary_crossentropy',
-        metrics=['accuracy', tf.keras.metrics.Precision(), tf.keras.metrics.Recall()]
-    )
+    for epoch in range(epochs):
+        model.train()
+        running_loss = 0.0
+        correct = 0
+        total = 0
+        
+        for images, labels in train_loader:
+            images, labels = images.to(DEVICE), labels.to(DEVICE)
+            
+            optimizer.zero_grad()
+            outputs = model(images)
+            loss = criterion(outputs.squeeze(), labels)
+            loss.backward()
+            optimizer.step()
+            
+            running_loss += loss.item() * images.size(0)
+            predicted = (outputs.squeeze() > 0.5).float()
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+        
+        train_loss = running_loss / len(train_loader.dataset)
+        train_acc = correct / total
+        
+        # Validation
+        val_loss, val_acc = evaluate_model(model, val_loader, criterion)
+        scheduler.step(val_loss)
+        
+        history['train_loss'].append(train_loss)
+        history['train_acc'].append(train_acc)
+        history['val_loss'].append(val_loss)
+        history['val_acc'].append(val_acc)
+        
+        print(f"Epoch {epoch+1}/{epochs} - "
+              f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f} - "
+              f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}")
+        
+        # Save best model
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            torch.save(model.state_dict(), 'models/best_model.pt')
+            print("Saved new best model")
     
-    return model
+    return history
+
+def evaluate_model(model, loader, criterion):
+    """Evaluate model on validation/test set"""
+    model.eval()
+    running_loss = 0.0
+    correct = 0
+    total = 0
+    
+    with torch.no_grad():
+        for images, labels in loader:
+            images, labels = images.to(DEVICE), labels.to(DEVICE)
+            outputs = model(images)
+            loss = criterion(outputs.squeeze(), labels)
+            
+            running_loss += loss.item() * images.size(0)
+            predicted = (outputs.squeeze() > 0.5).float()
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+    
+    loss = running_loss / len(loader.dataset)
+    acc = correct / total
+    return loss, acc
+
+def predict_image(model, image_path, classes, save_path=None):
+    """Make prediction on single image"""
+    try:
+        # Load and preprocess image
+        image = cv2.imread(image_path)
+        if image is None:
+            print(f"Warning: Could not read image {image_path}")
+            return None, 0
+        
+        orig_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        image = cv2.resize(orig_image, DEFAULT_IMAGE_SIZE)
+        image = transforms.ToTensor()(image)
+        image = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])(image)
+        image = image.unsqueeze(0).to(DEVICE)
+        
+        # Make prediction
+        model.eval()
+        with torch.no_grad():
+            output = model(image)
+            prediction = output.squeeze().item()
+        
+        predicted_class = "Weed" if prediction > 0.5 else "Crop"
+        confidence = prediction if predicted_class == "Weed" else 1 - prediction
+        
+        # Visualization
+        plt.figure(figsize=(8, 8))
+        plt.imshow(orig_image)
+        plt.title(f"Predicted: {predicted_class} ({confidence:.2f})")
+        plt.axis('off')
+        if save_path:
+            plt.savefig(save_path, bbox_inches='tight', pad_inches=0)
+            plt.close()
+        
+        return predicted_class, confidence
+    except Exception as e:
+        print(f"Error predicting {image_path}: {str(e)}")
+        return None, 0
 
 def main(data_dir, classes_file):
     """Main execution function"""
@@ -253,7 +369,7 @@ def main(data_dir, classes_file):
     plt.savefig('class_distribution.png', bbox_inches='tight')
     plt.close()
     
-    # Train-test split with stratification
+    # Train-test split
     train_df, test_df = train_test_split(
         df, test_size=TEST_SPLIT, 
         random_state=RANDOM_SEED, 
@@ -270,78 +386,62 @@ def main(data_dir, classes_file):
     print(f"Test samples: {len(test_df)}")
     
     # Data augmentation
-    train_datagen = ImageDataGenerator(
-        rescale=1./255,
-        rotation_range=25,
-        width_shift_range=0.15,
-        height_shift_range=0.15,
-        shear_range=0.15,
-        zoom_range=0.15,
-        horizontal_flip=True,
-        vertical_flip=True,
-        fill_mode='reflect'
-    )
+    train_transform = transforms.Compose([
+        transforms.ToPILImage(),
+        transforms.Resize(DEFAULT_IMAGE_SIZE),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomVerticalFlip(),
+        transforms.RandomRotation(25),
+        transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    ])
     
-    val_datagen = ImageDataGenerator(rescale=1./255)
-    test_datagen = ImageDataGenerator(rescale=1./255)
+    val_transform = transforms.Compose([
+        transforms.ToPILImage(),
+        transforms.Resize(DEFAULT_IMAGE_SIZE),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    ])
     
-    # Data generators
-    def create_generator(datagen, dataframe, shuffle=False):
-        return datagen.flow_from_dataframe(
-            dataframe=dataframe,
-            x_col='image_path',
-            y_col='has_weed',
-            target_size=DEFAULT_IMAGE_SIZE,
-            batch_size=BATCH_SIZE,
-            class_mode='binary',
-            shuffle=shuffle,
-            interpolation='bilinear'
-        )
+    # Create datasets
+    train_dataset = CropWeedDataset(train_df, train_transform)
+    val_dataset = CropWeedDataset(val_df, val_transform)
+    test_dataset = CropWeedDataset(test_df, val_transform)
     
-    train_generator = create_generator(train_datagen, train_df, shuffle=True)
-    val_generator = create_generator(val_datagen, val_df)
-    test_generator = create_generator(test_datagen, test_df)
+    # Create data loaders
+    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
+    val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4)
+    test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4)
     
-    # Build model
-    model = build_model((*DEFAULT_IMAGE_SIZE, 3))
-    print("\nModel summary:")
-    model.summary()
+    # Initialize model
+    model = CropWeedModel().to(DEVICE)
+    criterion = nn.BCELoss()
+    optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
+    scheduler = ReduceLROnPlateau(optimizer, 'min', patience=3, factor=0.1, verbose=True)
     
-    # Callbacks
-    callbacks = [
-        EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True),
-        ModelCheckpoint(
-            'models/best_model.h5',
-            monitor='val_accuracy',
-            save_best_only=True,
-            mode='max'
-        )
-    ]
+    print("\nModel architecture:")
+    print(model)
     
     # Train model
     print("\nTraining model...")
-    history = model.fit(
-        train_generator,
-        steps_per_epoch=len(train_generator),
-        epochs=EPOCHS,
-        validation_data=val_generator,
-        validation_steps=len(val_generator),
-        callbacks=callbacks,
-        verbose=1
+    history = train_model(
+        model, train_loader, val_loader, 
+        criterion, optimizer, scheduler, EPOCHS
     )
     
     # Plot training history
     plt.figure(figsize=(12, 5))
     
     plt.subplot(1, 2, 1)
-    plt.plot(history.history['accuracy'], label='Train Accuracy')
-    plt.plot(history.history['val_accuracy'], label='Validation Accuracy')
+    plt.plot(history['train_acc'], label='Train Accuracy')
+    plt.plot(history['val_acc'], label='Validation Accuracy')
     plt.title('Accuracy Over Epochs')
     plt.legend()
     
     plt.subplot(1, 2, 2)
-    plt.plot(history.history['loss'], label='Train Loss')
-    plt.plot(history.history['val_loss'], label='Validation Loss')
+    plt.plot(history['train_loss'], label='Train Loss')
+    plt.plot(history['val_loss'], label='Validation Loss')
     plt.title('Loss Over Epochs')
     plt.legend()
     
@@ -349,57 +449,27 @@ def main(data_dir, classes_file):
     plt.close()
     
     # Load best model
-    from tensorflow.keras.models import load_model
-    best_model = load_model('models/best_model.h5')
+    model.load_state_dict(torch.load('models/best_model.pt'))
+    model.eval()
     
     # Evaluate on test set
     print("\nEvaluating on test set...")
-    test_results = best_model.evaluate(test_generator, steps=len(test_generator))
-    print(f"\nTest Accuracy: {test_results[1]:.4f}")
-    print(f"Test Loss: {test_results[0]:.4f}")
-    print(f"Precision: {test_results[2]:.4f}")
-    print(f"Recall: {test_results[3]:.4f}")
+    test_loss, test_acc = evaluate_model(model, test_loader, criterion)
+    print(f"\nTest Accuracy: {test_acc:.4f}")
+    print(f"Test Loss: {test_loss:.4f}")
     
     # Save final model
-    best_model.save('crop_weed_classifier.h5')
-    print("\nModel saved as 'crop_weed_classifier.h5'")
+    torch.save(model.state_dict(), 'crop_weed_classifier.pt')
+    print("\nModel saved as 'crop_weed_classifier.pt'")
     
     # Sample predictions
-    def predict_image(model, image_path, classes, save_path=None):
-        try:
-            img = cv2.imread(image_path)
-            if img is None:
-                print(f"Warning: Could not read image {image_path}")
-                return None, 0
-            
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            img_resized = cv2.resize(img, DEFAULT_IMAGE_SIZE)
-            img_array = np.expand_dims(img_resized, axis=0) / 255.0
-            
-            prediction = model.predict(img_array)[0][0]
-            predicted_class = "Weed" if prediction > 0.5 else "Crop"
-            confidence = prediction if predicted_class == "Weed" else 1 - prediction
-            
-            plt.figure(figsize=(8, 8))
-            plt.imshow(img)
-            plt.title(f"Predicted: {predicted_class} ({confidence:.2f})")
-            plt.axis('off')
-            if save_path:
-                plt.savefig(save_path, bbox_inches='tight', pad_inches=0)
-                plt.close()
-            
-            return predicted_class, confidence
-        except Exception as e:
-            print(f"Error predicting {image_path}: {str(e)}")
-            return None, 0
-    
     print("\nMaking sample predictions...")
     for i in range(min(5, len(test_df))):
         sample = test_df.iloc[i]
         print(f"\nImage: {os.path.basename(sample['image_path'])}")
-        print(f"Actual: {'Weed' if sample['has_weed'] else 'Crop'}")
+        print(f"Actual: {'Weed' if sample['has_weed'] == 'yes' else 'Crop'}")
         pred_class, confidence = predict_image(
-            best_model,
+            model,
             sample['image_path'],
             classes,
             f"predictions/prediction_{i+1}.png"
@@ -413,8 +483,5 @@ if __name__ == "__main__":
     parser.add_argument('--data_dir', default='DataSet/', help='Path to dataset directory')
     parser.add_argument('--classes', default='classes.txt', help='Path to classes file')
     args = parser.parse_args()
-    
-    # Add TensorFlow import here to avoid import before argument parsing
-    import tensorflow as tf
     
     main(args.data_dir, args.classes)
