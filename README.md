@@ -37,7 +37,7 @@ source venv/bin/activate    # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 uvicorn main:app --host 0.0.0.0 --port 8000
 Access the web app at: http://localhost:8000
-```bash
+```
 
 The model (~27MB) will download automatically on first run!
 
@@ -101,8 +101,6 @@ Dataset Structure:
 ## 👨‍💻 Author
 
 **Umesh Samartapu**  
-[![LinkedIn](https://img.shields.io/badge/-LinkedIn-0077B5?style=flat-square&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/umeshsamartapu/)  
-[![Email](https://img.shields.io/badge/-Email-D14836?style=flat-square&logo=gmail&logoColor=white)](mailto:umeshsamartapu@gmail.com)
 
 ## 📫 Let's Connect
 
