@@ -1,0 +1,10 @@
+tensorflow
+opencv-python
+pillow
+pandas
+matplotlib
+seaborn
+scikit-learn
+numpy
+glob2
+argparse

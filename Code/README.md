@@ -1,134 +1,131 @@
-# 🌾 Crop and Weed Detection System
+# 🚦 Traffic Pattern Forecasting Report for Smart City Initiative
 
-A robust and optimized deep learning pipeline to detect crops and weeds from images using a YOLO-formatted dataset.
-This project improves upon earlier versions with bug fixes, better memory usage, and enhanced model performance.
+This project focuses on **predicting vehicle traffic volume** at city junctions using a combination of **feature engineering** and **machine learning models  XGBoost Regressor.** 
+It includes **data preprocessing, feature selection, model training, evaluation, and model saving.**
 
-# 🚀 About the Project
-This project builds an image classification system that identifies whether an agricultural image contains only crops or crops with weeds.
 
-The input images follow the YOLO labeling format, and the system includes:
+# 📂 Project Structure
+- **Train.csv** - Training data with traffic volume at different junctions.
 
-- Data validation and visualization
+- **Test.csv** - Test data where traffic needs to be predicted.
 
-- YOLO label parsing and bounding box visualization
+- **vehicle_model.pkl** - Trained model file saved for future use.
 
-- Automatic dataset splitting (train/validation/test)
+- **submission.csv** – Final predictions for the test dataset.
 
-- CNN-based classification model with Keras/TensorFlow
+# 🔧 Features & Techniques Used
 
-- Data augmentation for better generalization
+- **Feature Engineering:**
 
-- Model training, evaluation, and checkpointing
+- Extracted Hour, DayOfWeek, IsWeekend, and Month from DateTime.
+  
+- Converted DateTime into UNIX time for feature importance analysis.
 
-# ✨ Features
- 
-- 📂 Automatic loading of images and corresponding YOLO labels
+- **Feature Importance:** Used ExtraTreesClassifier to identify key features impacting traffic volume.
 
-- 📊 Sample visualizations with bounding boxes
+- **Modeling:** Trained an XGBoost Regressor for accurate traffic volume prediction.
 
-- 🔥 Data augmentation: rotation, zoom, shear, flips, shifts
+- **Evaluation:** Model performance measured using Mean Absolute Error (MAE).
 
-- 🏋️‍♂️ Custom CNN architecture for classification
+- **Visualization:** Feature importance bar chart. Histogram of vehicle counts.Traffic trends across junctions.
 
-- ⏳ Early stopping and model checkpointing
+- **Model Deployment:** Saved trained model using Joblib.
 
-- 📈 Automatic plotting of class distribution and training samples
 
-# 🏗️ Directory Structure
+# 📊 Data Preprocessing
+
+- **DateTime Parsing:** Converted string DateTime fields into Python datetime objects.
+
+- **Feature Extraction:** Extracted: Hour, DayOfWeek, IsWeekend, Month.
+
+- **Feature Engineering:** IsWeekend derived based on DayOfWeek.DateTime transformed to UNIX time for feature analysis.
+
+# 🧠 Model Training
+
+- **Feature Selection:** Used key features: Junction, Hour, DayOfWeek, IsWeekend, Month.
+
+- **Model:** XGBoost Regressor trained on extracted features.
+
+- **Evaluation Metrics:** Mean Absolute Error (MAE) was computed for validation set.
+
+
+Example Output:
 ```bash
-Code/
-│
-├── sample_visualizations/   # Visualized images with bounding boxes
-├── predictions/             # Model prediction outputs
-├── models/                  # Saved trained models
-├── class_distribution.png   # Class distribution plot
-├── main.py                  # Main executable Python script
-├── README.md                 # Project documentation
-├── requirements.txt         # Required packages
+Mean Absolute Error (MAE) on validation set: 8.31
+``
+
+# 📈 Visualizations
+
+- **Feature Importance Bar Chart** – Top features influencing traffic.
+
+- **Histogram of Vehicle Counts** – Distribution of traffic volume.
+
+- **Traffic Volume Trends by Junctions** – Line plot combining training and prediction data.
+
+# 💾 Saving the Model
+After training, the XGBoost model is saved as:
+```bash
+import joblib
+joblib.dump(model, "traffic_forecasting_model.pkl")
 ```
 
-# 🛠️ Installation
+# 📦 How the Prediction Works
 
-Clone this repository and install the dependencies:
+1.Preprocess the test dataset using the same transformations.
+
+2.Load the saved model traffic_forecasting_model.pkl.
+
+3.Predict the traffic volume on test data.
+
+4.Save the final predictions into submission.csv.
+
+5.Visualize the combined traffic volume.
+
+# 🛠 Requirements
+- Python 3.8+
+
+- Libraries:
 ```bash
-git clone https://github.com/yourusername/crop-weed-detection.git
-cd crop-weed-detection
-pip install -r requirements.txt
+- pandas
+
+- numpy
+
+- matplotlib
+
+- scikit-learn
+
+- xgboost
+
+- joblib
 ```
 
-# ⚡ Usage
-Run the pipeline with:
-```bash
-python main.py --data_dir PATH/TO/YOLO/DATA --classes_file PATH/TO/classes.txt
-```
+# 📜 Important Notes
 
-- --data_dir: Directory containing images and .txt YOLO label files.
+- Always apply the same feature extraction steps to both training and test datasets.
 
-- --classes_file: Text file listing class names (one per line, e.g., "crop", "weed").
+- Make sure DateTime parsing is correct (use dayfirst=True).
 
-Example:
-```bash
-python main.py --data_dir ./dataset --classes_file ./classes.txt
-```
+- Set a fixed random_state for reproducible results.
 
-# ✅ Output:
+- Fine-tune XGBoost hyperparameters for further performance improvement.
 
-- Trained CNN model (models/)
 
-- Sample visualizations (sample_visualizations/)
 
-- Class distribution plot (class_distribution.png)
+# ✨ Acknowledgements
+Special thanks to:
 
-- Model predictions (predictions/)
+- Scikit-learn developers for easy-to-use ML APIs.
 
-# 🏋️‍♂️ Training Details
-```bash
-Image Size: 512x512
-Batch Size: 16
-Epochs: 25
-Learning Rate: 0.0001
-Validation Split: 20%
-Test Split: 15%
-Optimizer: Adam
-Loss Function: Binary Crossentropy
-Metrics: Accuracy, Precision, Recall
-Augmentation techniques include rotation, shift, shear, zoom, horizontal and vertical flips.
-```
+- Kaggle and open datasets for real-world traffic data inspiration.
 
-# 📸 Outputs
+## 📫 Let's Connect
 
-- Bounding box visualizations for 3 random samples
+[![LinkedIn](https://img.shields.io/badge/-LinkedIn-0077B5?style=flat-square&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/umeshsamartapu/)
+[![Twitter](https://img.shields.io/badge/-Twitter-1DA1F2?style=flat-square&logo=twitter&logoColor=white)](https://x.com/umeshsamartapu)
+[![Email](https://img.shields.io/badge/-Email-D14836?style=flat-square&logo=gmail&logoColor=white)](mailto:umeshsamartapu@gmail.com)
+[![Instagram](https://img.shields.io/badge/-Instagram-E4405F?style=flat-square&logo=instagram&logoColor=white)](https://www.instagram.com/umeshsamartapu/)
+[![Buy Me a Coffee](https://img.shields.io/badge/-Buy%20Me%20a%20Coffee-FBAD19?style=flat-square&logo=buymeacoffee&logoColor=black)](https://www.buymeacoffee.com/umeshsamartapu)
 
-- Class distribution plots
+---
 
-- Model training logs and checkpoints
-
-- Final trained model (.h5)
-
-# 📦 Requirements
-```bash
-Python 3.8+
-TensorFlow 2.x
-Keras
-OpenCV
-Numpy
-Pandas
-Seaborn
-Matplotlib
-Pillow
-Scikit-learn
-(Full list in requirements.txt)
-```
-
-# 🙏 Acknowledgements
-
-- YOLO Object Detection community
-
-- TensorFlow and Keras teams
-
-- Open-source datasets on agricultural weed detection
-
---
-
-Made with ❤️ for advancing AI in smart agriculture 🌱
-
+🔥 Always exploring new technologies and solving real-world problems with code!
